@@ -4,7 +4,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './docs/swagger.json';
+import dotenv from 'dotenv';
 
+dotenv.config();
+
+const dbUrl = process.env.DATABASE_URL;
 
 const app = express();
 
