@@ -4,6 +4,8 @@ dotenv.config();
 export const config = {
   port: process.env.PORT || 5000,
   jwtSecret: process.env.JWT_SECRET || 'supersecret',
+  emailUser: process.env.EMAIL_USER,
+  emailPass: process.env.EMAIL_PASS,
   db: {
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),
@@ -11,6 +13,7 @@ export const config = {
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     dialect: 'postgres', // or mysql, sqlite, etc.
+
   },
   oauth: {
     googleClientId: process.env.GOOGLE_CLIENT_ID,

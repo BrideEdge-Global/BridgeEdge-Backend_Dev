@@ -1,14 +1,15 @@
 import app from './app';
 import { sequelize } from './models';
+import { config } from './config/index';
 
-const PORT = process.env.PORT || 5000;
+
+const PORT = config.port || 5000;
 
 async function start() {
   try {
-    // await sequelize.authenticate();
-    // console.log('Database connected ✅');
+    await sequelize.authenticate();
 
-    // await sequelize.sync({ alter: true }); // Or use { force: true } in dev
+    await sequelize.sync({ alter: true }); // Or use { force: true } in dev
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

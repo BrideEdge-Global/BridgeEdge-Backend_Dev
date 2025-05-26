@@ -4,11 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './docs/swagger.json';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const dbUrl = process.env.DATABASE_URL;
+import authRoutes from './routes/authRoutes';
 
 const app = express();
 
@@ -19,6 +15,7 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/api/auth', authRoutes);
 
 // Example test route
 app.get('/', (_req:any, res: any) => {

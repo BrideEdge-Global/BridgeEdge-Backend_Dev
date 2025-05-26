@@ -1,27 +1,210 @@
 {
-    "openapi": "3.0.0",
-    "info": {
-      "title": "BridgeEdge API",
-      "version": "1.0.0",
-      "description": "Enterprise backend API documentation"
-    },
-    "servers": [
-      {
-        "url": "http://localhost:5000",
-        "description": "Local dev"
+  "openapi": "3.0.0",
+  "info": {
+    "title": "BridgeEdge API",
+    "version": "1.0.0",
+    "description": "Enterprise backend API documentation"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Local dev"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root Route",
+        "responses": {
+          "200": {
+            "description": "Returns a basic welcome message"
+          }
+        }
       }
-    ],
-    "paths": {
-      "/": {
-        "get": {
-          "summary": "Root Route",
-          "responses": {
-            "200": {
-              "description": "Returns a basic welcome message"
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "confirmPassword": { "type": "string" },
+                  "isAdmin": { "type": "boolean" },
+                  "isCustomer": { "type": "boolean" },
+                  "isActive": { "type": "boolean" }
+                },
+                "required": ["email", "password", "confirmPassword"]
+              }
             }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "409": {
+            "description": "User already exists or password mismatch"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login a user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful"
+          },
+          "401": {
+            "description": "Invalid login details"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/send-otp": {
+      "post": {
+        "summary": "Send OTP for password reset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/verify-otp": {
+      "post": {
+        "summary": "Verify OTP for password reset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "otp": { "type": "string" }
+                },
+                "required": ["email", "otp"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified successfully"
+          },
+          "400": {
+            "description": "Invalid OTP"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/send-otp-for-password-changing": {
+      "post": {
+        "summary": "Send OTP for changing password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "summary": "Reset user password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "otp":{"type": "string"},
+                  "newPassword": { "type": "string" },
+                  "confirmNewPassword": { "type": "string" }
+                },
+                "required": ["email", "otp", "newPassword", "confirmNewPassword"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully"
+          },
+          "400": {
+            "description": "Invalid input or password mismatch"
+          },
+          "404": {
+            "description": "User not found"
           }
         }
       }
     }
   }
-  
+}
