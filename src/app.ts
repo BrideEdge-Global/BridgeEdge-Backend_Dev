@@ -17,6 +17,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 
+app.get("/health", (req, res) => {
+  res.json({ status: "OK" });
+});
+
 // Example test route
 app.get('/', (_req:any, res: any) => {
   res.send('API is running...');

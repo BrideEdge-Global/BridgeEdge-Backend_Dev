@@ -13,7 +13,6 @@ export const config = {
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     dialect: 'postgres', // or mysql, sqlite, etc.
-
   },
   oauth: {
     googleClientId: process.env.GOOGLE_CLIENT_ID,

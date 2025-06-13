@@ -7,8 +7,8 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5000",
-      "description": "Local dev"
+      "url": "https://bridgeedge-backend-dev.onrender.com",
+      "description": ""
     }
   ],
   "paths": {
@@ -36,6 +36,7 @@
                   "password": { "type": "string" },
                   "confirmPassword": { "type": "string" },
                   "isAdmin": { "type": "boolean" },
+                  "isAgent": { "type": "boolean" },
                   "isCustomer": { "type": "boolean" },
                   "isActive": { "type": "boolean" }
                 },
@@ -46,7 +47,23 @@
         },
         "responses": {
           "201": {
-            "description": "User created successfully"
+            "description": "User registered successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": { "type": "string" },
+                    "password": { "type": "string" },
+                    "confirmPassword": { "type": "string" },
+                    "isAdmin": { "type": "boolean" },
+                    "isAgent": { "type": "boolean" },
+                    "isCustomer": { "type": "boolean" },
+                    "isActive": { "type": "boolean" }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid input"
@@ -57,7 +74,34 @@
         }
       }
     },
-    "/api/auth/login": {
+    "/api/auth/resend-otp": {
+      "post": {
+        "summary": "Resend OTP for verification",
+        "requestBody":{
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" }
+                },
+                "required": ["email", "otp"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent to your email"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/admin-login": {
       "post": {
         "summary": "Login a user",
         "requestBody": {
@@ -77,37 +121,20 @@
         },
         "responses": {
           "200": {
-            "description": "Login successful"
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string" }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Invalid login details"
-          },
-          "404": {
-            "description": "User not found"
-          }
-        }
-      }
-    },
-    "/api/auth/send-otp": {
-      "post": {
-        "summary": "Send OTP for password reset",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "email": { "type": "string" }
-                },
-                "required": ["email"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OTP sent successfully"
           },
           "404": {
             "description": "User not found"
@@ -165,7 +192,7 @@
         },
         "responses": {
           "200": {
-            "description": "OTP sent successfully"
+            "description": "OTP sent to your email"
           },
           "404": {
             "description": "User not found"
@@ -195,7 +222,62 @@
         },
         "responses": {
           "200": {
-            "description": "Password reset successfully"
+            "description": "Password has been changed successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": { "email": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or password mismatch"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/change-password-logged-in-user": {
+      "post": {
+        "summary": "Reset user password while user is logged in",
+        "security": [
+            { "bearerAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "CurrentPassword":{"type": "string"},
+                  "newPassword": { "type": "string" },
+                  "confirmNewPassword": { "type": "string" }
+                },
+                "required": ["email", "otp", "newPassword", "confirmNewPassword"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password has been changed successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": { "email": "string" }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid input or password mismatch"
