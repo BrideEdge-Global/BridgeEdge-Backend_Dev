@@ -11,6 +11,20 @@
       "description": ""
     }
   ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "paths": {
     "/": {
       "get": {
@@ -25,6 +39,7 @@
     "/api/auth/register": {
       "post": {
         "summary": "Register a new user",
+        "tags": ["Auth"],
         "requestBody": {
           "required": true,
           "content": {
@@ -35,9 +50,9 @@
                   "email": { "type": "string" },
                   "password": { "type": "string" },
                   "confirmPassword": { "type": "string" },
-                  "isAdmin": { "type": "boolean" },
-                  "isAgent": { "type": "boolean" },
-                  "isCustomer": { "type": "boolean" },
+                  "isAdmin": { "type": "boolean", "default": false},
+                  "isAgent": { "type": "boolean", "default": false},
+                  "isCustomer": { "type": "boolean", "default": false},
                   "isActive": { "type": "boolean" }
                 },
                 "required": ["email", "password", "confirmPassword"]
@@ -77,6 +92,7 @@
     "/api/auth/resend-otp": {
       "post": {
         "summary": "Resend OTP for verification",
+        "tags": ["Auth"],
         "requestBody":{
           "required": true,
           "content": {
@@ -93,7 +109,19 @@
         },
         "responses": {
           "200": {
-            "description": "OTP sent to your email"
+            "description": "OTP sent successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "otp": { "type": "string" },
+                    "otpExpires": { "type": "string", "format": "date-time" },
+                    "otpToken": { "type": "string" }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "User not found"
@@ -104,6 +132,7 @@
     "/api/auth/admin-login": {
       "post": {
         "summary": "Login a user",
+        "tags": ["Auth"],
         "requestBody": {
           "required": true,
           "content": {
@@ -145,6 +174,10 @@
     "/api/auth/verify-otp": {
       "post": {
         "summary": "Verify OTP for password reset",
+        "tags": ["Auth"],
+        "security": [
+            { "bearerAuth": [] }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -152,7 +185,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "email": { "type": "string" },
                   "otp": { "type": "string" }
                 },
                 "required": ["email", "otp"]
@@ -173,36 +205,13 @@
         }
       }
     },
-    "/api/auth/send-otp-for-password-changing": {
-      "post": {
-        "summary": "Send OTP for changing password",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "email": { "type": "string" }
-                },
-                "required": ["email"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OTP sent to your email"
-          },
-          "404": {
-            "description": "User not found"
-          }
-        }
-      }
-    },
     "/api/auth/change-password": {
       "post": {
         "summary": "Reset user password",
+        "tags": ["Auth"],
+        "security": [
+            { "bearerAuth": [] }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -210,12 +219,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "email": { "type": "string" },
-                  "otp":{"type": "string"},
                   "newPassword": { "type": "string" },
                   "confirmNewPassword": { "type": "string" }
                 },
-                "required": ["email", "otp", "newPassword", "confirmNewPassword"]
+                "required": ["newPassword", "confirmNewPassword"]
               }
             }
           }
@@ -246,6 +253,7 @@
     "/api/auth/change-password-logged-in-user": {
       "post": {
         "summary": "Reset user password while user is logged in",
+        "tags": ["Auth"],
         "security": [
             { "bearerAuth": [] }
         ],

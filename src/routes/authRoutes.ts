@@ -4,7 +4,6 @@ import {
   verifyOtp,
   resendOTP, 
   changePassword,
-  sendOtpForPasswordChanging 
 } from './../controllers/auths.control';
 import { 
   adminLogin,
@@ -19,7 +18,6 @@ router.post('/register',  createUser);
 router.post('/admin-login', loginRateLimiter, otpRateLimiter, adminLogin);
 router.post('/resend-otp', otpRateLimiter, resendOTP);
 router.post('/verify-otp', verifyOtp);
-router.post('/send-otp-for-password-changing', otpRateLimiter, sendOtpForPasswordChanging);
 router.post('/change-password', changePassword);
 router.post('/change-password-logged-in-user', authMiddleware, changePasswordWhenLoggedIn)
 

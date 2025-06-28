@@ -14,7 +14,7 @@ if (!JWT_SECRET) throw new Error('JWT_SECRET is not defined');
 
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: UserAttributes; // or whatever type your user object is
+    user?: UserAttributes; 
   }
 }
 
@@ -55,9 +55,13 @@ export const adminLogin = async (req: Request, res: Response): Promise<void> => 
             subject: 'Your OTP Code',
             text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
         });
+
+        const otpToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '15m' });
+
         CustomResponse.successResponse(res, 'Your account as not been verified, OTP sent successfully', 200, {
         email,
         otpExpires,
+        otpToken
         });
         return;
     }
@@ -87,7 +91,7 @@ export const changePasswordWhenLoggedIn = async (req: Request, res: Response): P
   const { currentPassword, newPassword, confirmNewPassword } = req.body;
 
   if (!userId) {
-    CustomResponse.errorResponse(res, 'User not authenticated', 401, {});
+    CustomResponse.errorResponse(res, 'User not valid', 401, {});
     return;
   }
 

@@ -10,6 +10,7 @@ export interface UserAttributes {
   isActive?: boolean;
   otp?: string;
   otpExpires?: Date;
+  isVerified?: boolean;
 }
 
 @Table({ tableName: 'users', timestamps: true })
@@ -33,7 +34,7 @@ export default class User extends Model<UserAttributes, UserAttributes> {
   @Column(DataType.BOOLEAN)
   isAgent!: boolean;
 
-  @Default(true)
+  @Default(false)
   @Column(DataType.BOOLEAN)
   isCustomer!: boolean;
 

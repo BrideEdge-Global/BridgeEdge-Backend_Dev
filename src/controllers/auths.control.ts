@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import Jwt  from 'jsonwebtoken';
 import User from './../models/user.model';
 import { config } from './../config/index';
 import CustomResponse from './../utils/custom.response';
@@ -61,6 +62,9 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
     });
 
+    const otpToken = Jwt.sign({ email: newUser.email }, process.env.JWT_SECRET!, {
+      expiresIn: '15m' });
+
     CustomResponse.successResponse(res, 'User created successfully. OTP sent to email.', 201, {
       user: {
         id: newUser.id,
@@ -70,6 +74,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         isCustomer: newUser.isCustomer,
         isActive: newUser.isActive,
       },
+      otpToken
     });
   } catch (error: any) {
     CustomResponse.errorResponse(res, `Server Error: ${error.message || error}`, 500, []);
@@ -82,6 +87,7 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const user = await User.findOne({ where: { email } });
+    console.log(user);
 
     if (!user) {
       CustomResponse.errorResponse(res, 'User not found', 404, {});
@@ -93,8 +99,8 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (!user.isVerified) {
-      CustomResponse.errorResponse(res, 'User has been verified', 404, {});
+    if (user.isVerified) {
+      CustomResponse.errorResponse(res, 'User has already been verified', 400, {});
       return;
     }
 
@@ -110,9 +116,13 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
         subject: 'Your OTP Code',
         text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
       });
+
+    const otpToken = Jwt.sign({ email }, JWT_SECRET, { expiresIn: '15m' });
+    
     CustomResponse.successResponse(res, 'OTP sent successfully', 200, {
       email,
       otpExpires,
+      otpToken
     });
   }
   catch (error) {
@@ -125,19 +135,37 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
  * Verify OTP endpoint
  */
 export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
-  const { email, otp } = req.body;
+  const { otp } = req.body;
 
   try {
-    const user = await User.findOne({ where: { email } });
-
-    if (!email || !otp) {
+    
+    if (!otp ) {
       CustomResponse.errorResponse(res, 'Email and OTP are required', 400, {});
       return;
     }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      CustomResponse.errorResponse(res, 'Authorization header is missing or invalid', 401, {});
+      return;
+    }
+
+    const otpToken = authHeader.split(' ')[1];
+    if (!otpToken) {
+      CustomResponse.errorResponse(res, 'OTP token is missing', 400, {});
+      return;
+    }
+
+    let email: string;
+
+    // Decode the OTP token to get the email
+    const decoded = Jwt.verify(otpToken, process.env.JWT_SECRET!) as { email: string };
+    email = decoded.email;
     
+    const user = await User.findOne({ where: { email } });
 
     if (!user || !user.otp || !user.otpExpires) {
-      CustomResponse.errorResponse(res, 'Invalid request', 404, {});
+      CustomResponse.errorResponse(res, 'Invalid OTP or user not found', 404, {});
       return;
     }
 
@@ -166,66 +194,40 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
 };
 
 /**
- * Forget password section with OTP sending and verification
- * This endpoint allows a user to change their password using an OTP sent to their email.
- * Below is the implementation of sending an OTP for password changing.
- */
-export const sendOtpForPasswordChanging = async (req: Request, res: Response): Promise<void> => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ where: { email } });
-
-    if (!user) {
-      CustomResponse.errorResponse(res, 'User not found', 404, {});
-      return;
-    }
-
-    if (!user.isActive) {
-      CustomResponse.errorResponse(res, 'User is not active', 403, {});
-      return;
-    }
-
-    const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
-
-    user.otp = otp;
-    user.otpExpires = otpExpires;
-    await user.save();
-
-    await sendEmail({
-        to: email,
-        subject: 'Your OTP Code',
-        text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
-      });
-    CustomResponse.successResponse(res, 'OTP sent successfully', 200, {
-      email,
-      otpExpires,
-    });
-  }
-  catch (error) {
-    CustomResponse.errorResponse(res, `Server Error: ${error}`, 500, {});
-    return;
-  }
-};
-
-/**
  * Change password endpoint using OTP
  * This endpoint allows a user to change their password using an OTP sent to their email.
  */
 export const changePassword = async (req: Request, res: Response): Promise<void> => {
-  const {email, otp, newPassword, confirmNewPassword} = req.body;
+  const {newPassword, confirmNewPassword} = req.body;
 
   try {
 
-    if (!email || !otp || !newPassword || !confirmNewPassword) {
+    if (!newPassword || !confirmNewPassword) {
       CustomResponse.errorResponse(res, 'All fields are required', 400, []);
       return;
     }
 
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      CustomResponse.errorResponse(res, 'Authorization header is missing or invalid', 401, {});
+      return;
+    }
+
+    const otpToken = authHeader.split(' ')[1];
+    if (!otpToken) {
+      CustomResponse.errorResponse(res, 'Unknown Authentication', 400, {});
+      return;
+    }
+
+    let email: string;
+    
+    // Decode the OTP token to get the email
+    const decoded = Jwt.verify(otpToken, process.env.JWT_SECRET!) as { email: string };
+    email = decoded.email;
+
     const user = await User.findOne({ where: { email } });
 
-    if (!user || user.otp !== otp || !user.otpExpires || user.otpExpires < new Date()) {
+    if (!user) {
       CustomResponse.errorResponse(res, 'Invalid request', 404, {});
       return;
     }
@@ -248,8 +250,6 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
-    user.otp = null; // Clear OTP after successful password change
-    user.otpExpires = null; // Clear OTP expiration
     await user.save();
 
     CustomResponse.successResponse(res, 'Password reset successfully', 200, {});
