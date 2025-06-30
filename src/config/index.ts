@@ -7,6 +7,8 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'supersecret',
   emailUser: process.env.EMAIL_USER,
   emailPass: process.env.EMAIL_PASS,
+  nodeEnv: process.env.NODE_ENV,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'supersecret-refresh',
   db: {
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),

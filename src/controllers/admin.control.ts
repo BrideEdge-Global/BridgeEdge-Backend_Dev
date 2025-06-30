@@ -4,13 +4,16 @@ import User from './../models/user.model';
 import { config } from './../config/index';
 import CustomResponse from './../utils/custom.response';
 import jwt from 'jsonwebtoken';
-import { generateOTP } from './../services/otp.generator';
-import { sendEmail } from './../services/email.service';
+import { generateOTP } from '../utils/otp.generator';
 import passwordRules from './../utils/password.check';
 import { UserAttributes } from './../models/user.model';
+import { sendVerificationEmail } from './../services/email/email.service';
 
 const JWT_SECRET = config.jwtSecret;
 if (!JWT_SECRET) throw new Error('JWT_SECRET is not defined');
+
+const JWT_REFRESH_SECRET = config.jwtRefreshSecret;
+if (!JWT_REFRESH_SECRET) throw new Error('JWT_REFRESH_SECRET is not defined');  
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -50,30 +53,40 @@ export const adminLogin = async (req: Request, res: Response): Promise<void> => 
         user.otpExpires = otpExpires;
         await user.save();
 
-        await sendEmail({
-            to: email,
-            subject: 'Your OTP Code',
-            text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+        // Send OTP via email
+        await sendVerificationEmail(email, otp);
+        
+        // Generate JWT tokens
+        // Access token valid for 1 day, refresh token valid for 7 days
+        const otpToken = jwt.sign({ email: user.email }, JWT_SECRET!, {
+          expiresIn: '1d'
         });
 
-        const otpToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '15m' });
-
         CustomResponse.successResponse(res, 'Your account as not been verified, OTP sent successfully', 200, {
-        email,
-        otpExpires,
-        otpToken
+        otpToken: otpToken,
         });
         return;
     }
 
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
+    const refreshToken = jwt.sign({ id: user.id, email: user.email }, JWT_REFRESH_SECRET!, {
+      expiresIn: '7d'
+    });
+    
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true, // Use secure cookies in production
+      sameSite: 'strict', // Prevent CSRF attacks,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
     CustomResponse.successResponse(res, 'Login successful', 200, {
-      token,
       user: {
         id: user.id,
         email: user.email,
       },
+      accessToken: token,
+      refreshToken: refreshToken,
     });
     return;
   } catch (error: any) {

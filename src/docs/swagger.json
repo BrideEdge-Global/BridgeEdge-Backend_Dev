@@ -8,7 +8,11 @@
   "servers": [
     {
       "url": "https://bridgeedge-backend-dev.onrender.com",
-      "description": ""
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:5000",
+      "description": "Local development server"
     }
   ],
   "components": {
@@ -132,7 +136,7 @@
     "/api/auth/admin-login": {
       "post": {
         "summary": "Login a user",
-        "tags": ["Auth"],
+        "tags": ["Admin"],
         "requestBody": {
           "required": true,
           "content": {
@@ -164,6 +168,45 @@
           },
           "401": {
             "description": "Invalid login details"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/otp-for-password-reset": {
+      "post": {
+        "summary": "Request OTP for password reset",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "otpExpires": { "type": "string", "format": "date-time" },
+                    "otpToken": { "type": "string" }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "User not found"
@@ -292,6 +335,23 @@
           },
           "404": {
             "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Logout user",
+        "tags": ["Auth"],
+        "security": [
+            { "bearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "User logged out successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
           }
         }
       }

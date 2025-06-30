@@ -5,17 +5,25 @@ import User from './../models/user.model';
 import { config } from './../config/index';
 import CustomResponse from './../utils/custom.response';
 import passwordRules from './../utils/password.check';
-import { generateOTP } from './../services/otp.generator';
-import { sendEmail } from './../services/email.service';
+import { generateOTP, isEmailValid, isOTPExpired, isValidOTP } from '../utils/otp.generator';
+import { sendResetPasswordOTP, sendVerificationEmail } from '../services/email/email.service';
 
 const JWT_SECRET = config.jwtSecret;
 if (!JWT_SECRET) throw new Error('JWT_SECRET is not defined');
+
+const JWT_REFRESH_SECRET = config.jwtRefreshSecret;
+if (!JWT_REFRESH_SECRET) throw new Error('JWT_REFRESH_SECRET is not defined');
 
 /**
  * Create a new user (admin or customer)
  */
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   const { email, password, confirmPassword, isAdmin, isAgent, isCustomer, isActive } = req.body;
+
+  if (!isEmailValid(email)) {
+    CustomResponse.errorResponse(res, 'Invalid email format', 400, []);
+    return;
+  }
 
   if (!passwordRules.test(password)) {
     CustomResponse.errorResponse(
@@ -40,7 +48,6 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const otp = generateOTP();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 mins
 
@@ -56,14 +63,23 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     });
 
     // Send OTP via email
-    await sendEmail({
-      to: email,
-      subject: 'Your OTP Code',
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+    await sendVerificationEmail(email, otp);
+
+    // Generate JWT tokens
+    // Access token valid for 1 day, refresh token valid for 7 days
+    const accessToken = Jwt.sign({ id: newUser.id }, JWT_SECRET!, {
+      expiresIn: '1d'
+    });
+    const refreshToken = Jwt.sign({ id: newUser.id }, JWT_REFRESH_SECRET!, {
+      expiresIn: '7d'
     });
 
-    const otpToken = Jwt.sign({ email: newUser.email }, process.env.JWT_SECRET!, {
-      expiresIn: '15m' });
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true, // Use secure cookies in production
+      sameSite: 'strict', // Prevent CSRF attacks,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
     CustomResponse.successResponse(res, 'User created successfully. OTP sent to email.', 201, {
       user: {
@@ -74,7 +90,8 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         isCustomer: newUser.isCustomer,
         isActive: newUser.isActive,
       },
-      otpToken
+      accessToken: accessToken,
+      refreshToken: refreshToken,
     });
   } catch (error: any) {
     CustomResponse.errorResponse(res, `Server Error: ${error.message || error}`, 500, []);
@@ -87,7 +104,6 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const user = await User.findOne({ where: { email } });
-    console.log(user);
 
     if (!user) {
       CustomResponse.errorResponse(res, 'User not found', 404, {});
@@ -111,18 +127,50 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
     user.otpExpires = otpExpires;
     await user.save();
 
-    await sendEmail({
-        to: email,
-        subject: 'Your OTP Code',
-        text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
-      });
+    await sendVerificationEmail(email, otp);
 
     const otpToken = Jwt.sign({ email }, JWT_SECRET, { expiresIn: '15m' });
     
     CustomResponse.successResponse(res, 'OTP sent successfully', 200, {
-      email,
-      otpExpires,
-      otpToken
+      otpToken: otpToken
+    });
+  }
+  catch (error) {
+    CustomResponse.errorResponse(res, `Server Error: ${error}`, 500, {});
+    return;
+  }
+};
+
+/* Send OTP for password verification */
+export const OTPForPasswordReset = async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      CustomResponse.errorResponse(res, 'User not found', 404, {});
+      return;
+    }
+
+    if (!user.isActive) {
+      CustomResponse.errorResponse(res, 'User is not active', 403, {});
+      return;
+    }
+
+    const otp = generateOTP();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
+
+    user.otp = otp;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    await sendResetPasswordOTP(email, otp);
+
+    const otpToken = Jwt.sign({ email }, JWT_SECRET, { expiresIn: '15m' });
+    
+    CustomResponse.successResponse(res, 'OTP sent successfully', 200, {
+      otpToken: otpToken
     });
   }
   catch (error) {
@@ -159,7 +207,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
     let email: string;
 
     // Decode the OTP token to get the email
-    const decoded = Jwt.verify(otpToken, process.env.JWT_SECRET!) as { email: string };
+    const decoded = Jwt.verify(otpToken, JWT_SECRET!) as { email: string };
     email = decoded.email;
     
     const user = await User.findOne({ where: { email } });
@@ -169,12 +217,12 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (user.otp !== otp) {
+    if (!isValidOTP(otp, user.otp)) {
       CustomResponse.errorResponse(res, 'Invalid OTP', 400, {});
       return;
     }
 
-    if (user.otpExpires < new Date()) {
+   if (isOTPExpired(user.otpExpires)) {
       CustomResponse.errorResponse(res, 'OTP has expired', 400, {});
       return;
     }
@@ -257,5 +305,16 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
   } catch (error) { 
     CustomResponse.errorResponse(res, `Server Error: ${error}`, 500, {});
     return;
+  }
+};
+
+/* This Endpoint Logout User */
+export const logoutUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Clear the refresh token cookie
+    res.clearCookie('refreshToken', { httpOnly: true, sameSite: 'strict', secure: true });
+    CustomResponse.successResponse(res, 'Logged out successfully', 200, {});
+  } catch (error) {
+    CustomResponse.errorResponse(res, `Server Error: ${error}`, 500, {});
   }
 };
