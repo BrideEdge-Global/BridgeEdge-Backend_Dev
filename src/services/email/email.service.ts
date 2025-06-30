@@ -4,7 +4,7 @@ import path from 'path';
 import { config } from './../../config/index';
 
 function loadTemplate(templateName: string, variables: Record<string, any>): string {
-  const templatePath = path.join(__dirname, '..', 'email\\template', templateName);
+  const templatePath = path.join(__dirname, '..', 'email', 'template', templateName);
   let template = fs.readFileSync(templatePath, 'utf-8');
 
   Object.entries(variables).forEach(([key, value]) => {
