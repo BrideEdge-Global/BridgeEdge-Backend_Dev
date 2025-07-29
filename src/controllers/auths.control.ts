@@ -214,18 +214,18 @@ export const sendOtpForPasswordChanging = async (req: Request, res: Response): P
  * This endpoint allows a user to change their password using an OTP sent to their email.
  */
 export const changePassword = async (req: Request, res: Response): Promise<void> => {
-  const {email, otp, newPassword, confirmNewPassword} = req.body;
+  const {email, newPassword, confirmNewPassword} = req.body;
 
   try {
 
-    if (!email || !otp || !newPassword || !confirmNewPassword) {
+    if (!email || !newPassword || !confirmNewPassword) {
       CustomResponse.errorResponse(res, 'All fields are required', 400, []);
       return;
     }
 
     const user = await User.findOne({ where: { email } });
 
-    if (!user || user.otp !== otp || !user.otpExpires || user.otpExpires < new Date()) {
+    if (!user  || !user.otpExpires || user.otpExpires < new Date()) {
       CustomResponse.errorResponse(res, 'Invalid request', 404, {});
       return;
     }
@@ -248,8 +248,6 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
-    user.otp = null; // Clear OTP after successful password change
-    user.otpExpires = null; // Clear OTP expiration
     await user.save();
 
     CustomResponse.successResponse(res, 'Password reset successfully', 200, {});

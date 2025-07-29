@@ -144,7 +144,8 @@
     },
     "/api/auth/verify-otp": {
       "post": {
-        "summary": "Verify OTP for password reset",
+        "summary": "Verify OTP for account confirmation",
+        "description": "Verifies a user's OTP to confirm their email or account. If valid and not expired, the OTP is cleared and the user is marked as verified.",
         "requestBody": {
           "required": true,
           "content": {
@@ -152,8 +153,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "email": { "type": "string" },
-                  "otp": { "type": "string" }
+                  "email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "123456"
+                  }
                 },
                 "required": ["email", "otp"]
               }
@@ -162,13 +169,29 @@
         },
         "responses": {
           "200": {
-            "description": "OTP verified successfully"
+            "description": "OTP verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "OTP verified successfully"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Invalid OTP"
+            "description": "Bad Request - missing fields, invalid or expired OTP"
           },
           "404": {
-            "description": "User not found"
+            "description": "User not found or OTP record missing"
+          },
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
@@ -202,7 +225,8 @@
     },
     "/api/auth/change-password": {
       "post": {
-        "summary": "Reset user password",
+        "summary": "Change user password",
+        "description": "Allows a user to change their password by providing their email, new password, and confirming the new password. The OTP field is not required or used in this endpoint.",
         "requestBody": {
           "required": true,
           "content": {
@@ -210,39 +234,54 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "email": { "type": "string" },
-                  "otp":{"type": "string"},
-                  "newPassword": { "type": "string" },
-                  "confirmNewPassword": { "type": "string" }
+                  "email": { 
+                    "type": "string", 
+                    "example": "user@example.com"
+                  },
+                  "newPassword": { 
+                    "type": "string", 
+                    "example": "NewPassw0rd!" 
+                  },
+                  "confirmNewPassword": { 
+                    "type": "string", 
+                    "example": "NewPassw0rd!" 
+                  }
                 },
-                "required": ["email", "otp", "newPassword", "confirmNewPassword"]
+                "required": ["email", "newPassword", "confirmNewPassword"]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Password has been changed successful",
+            "description": "Password reset successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "email": { "email": "string" }
+                    "message": { 
+                      "type": "string", 
+                      "example": "Password reset successfully" 
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid input or password mismatch"
+            "description": "Bad Request - e.g., missing fields, password mismatch, or weak password"
           },
           "404": {
-            "description": "User not found"
+            "description": "User not found or OTP expired"
+          },
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
-    },
+    },    
+
     "/api/auth/change-password-logged-in-user": {
       "post": {
         "summary": "Reset user password while user is logged in",
