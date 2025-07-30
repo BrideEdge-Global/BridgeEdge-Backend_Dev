@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { config } from '../config/index';
+
+const JWT_SECRET = config.jwtSecret;
+if (!JWT_SECRET) throw new Error('JWT_SECRET is not defined');
 
 const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
     const authHeader = req.headers.authorization;
@@ -10,7 +14,7 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction): void =
 
     const token = authHeader.split(' ')[1];
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+        const decoded = jwt.verify(token, JWT_SECRET as string);
         (req as any).user = decoded;
         next();
     } catch (err) {
