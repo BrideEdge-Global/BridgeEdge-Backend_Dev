@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import User from './../models/user.model';
 import { config } from './../config/index';
 import CustomResponse from './../utils/custom.response';
